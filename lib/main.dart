@@ -1,67 +1,71 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shop_app/layout/cubit/cubit.dart';
+import 'package:shop_app/layout/shop_layout.dart';
+import 'package:shop_app/modules/login/shop_login_screen.dart';
+import 'package:shop_app/shared/components/constants.dart';
+import 'package:shop_app/shared/network/local/cache_helper.dart';
+import 'package:shop_app/shared/network/remote/diohelper.dart';
+import 'package:shop_app/shared/styles/themes.dart';
+import 'modules/login/login_cubit/bloc_odserve.dart';
+import 'modules/on_boarding/on_boarding.dart';
+void main()async {
 
-void main() {
-  runApp(const MyApp());
+  HttpOverrides.global = MyHttpOverrides();
+
+  WidgetsFlutterBinding.ensureInitialized();
+  DioHelper.initialObject();
+  await CacheHelper.initialCacheObject();
+  Bloc.observer = MyBlocObserver();
+
+  Widget widget;
+  bool? onBoardingShow = CacheHelper.getData('onBoarding');
+  token = CacheHelper.getData('token');
+  if(onBoardingShow != null )
+  {
+    if(token != null )
+    {
+      widget = const ShopLayout();
+    }
+    else
+    {
+      widget = ShopLoginScreen();
+    }
+  }
+  else
+  {
+    widget = OnBoardingScreen();
+  }
+  runApp(MyApp(widget));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  Widget widget;
+  MyApp(this.widget,{Key? key}) : super(key: key);
   @override
   Widget build(BuildContext context)
   {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
+    return  BlocProvider(
+      create: (context) => AppCubit()..getHomeData(token)..getCategoryData(token)..getFavoritesData(token)..getProfile(token),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: light,
+        darkTheme: dark,
+        themeMode: ThemeMode.light,
+        home: widget
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
 
-  final String title;
-
+class MyHttpOverrides extends HttpOverrides{
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
-    );
+  HttpClient createHttpClient(SecurityContext? context){
+    return super.createHttpClient(context)
+      ..badCertificateCallback = (X509Certificate cert, String host, int port)=> true;
   }
 }
+
+
